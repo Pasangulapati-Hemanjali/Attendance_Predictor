@@ -1,0 +1,104 @@
+import pandas as pd
+
+# Read CSV directly from Colab content folder
+df = pd.read_csv("/content/Attendance_Dataset.csv")
+
+# Attendance columns
+day_cols = [f"Day_{i}" for i in range(1, 41)]
+
+# Days attended
+df["Days_Attended"] = (df[day_cols] > 0).sum(axis=1)
+
+# Total minutes attended
+df["Total_Minutes_Attended"] = df[day_cols].sum(axis=1)
+
+# Attendance percentage
+TOTAL_MINUTES = 40 * 120
+
+df["Attendance_Percentage"] = round(
+    (df["Total_Minutes_Attended"] / TOTAL_MINUTES) * 100,
+    2
+)
+
+# Certification prediction
+df["Status"] = df["Attendance_Percentage"].apply(
+    lambda x: "Certified" if x >= 80 else "Not Certified"
+)
+
+# Final report
+report_df = df[
+    [
+        "Name",
+        "Email",
+        "Days_Attended",
+        "Total_Minutes_Attended",
+        "Attendance_Percentage",
+        "Status"
+    ]
+]
+
+# Save Excel
+output_file = "/content/Certification_Report.xlsx"
+
+report_df.to_excel(
+    output_file,
+    index=False
+)
+
+# =====================================
+# FORMAT EXCEL
+# =====================================
+
+from openpyxl import load_workbook
+from openpyxl.styles import Border, Side, Font, Alignment
+
+wb = load_workbook(output_file)
+ws = wb.active
+
+thin_border = Border(
+    left=Side(style='thin'),
+    right=Side(style='thin'),
+    top=Side(style='thin'),
+    bottom=Side(style='thin')
+)
+
+for row in ws.iter_rows():
+    for cell in row:
+
+        # Borders
+        cell.border = thin_border
+
+
+        # Header formatting
+        if cell.row == 1:
+            cell.font = Font(bold=True)
+
+# Auto column width
+for column in ws.columns:
+
+    max_length = 0
+    column_letter = column[0].column_letter
+
+    for cell in column:
+
+        try:
+            if len(str(cell.value)) > max_length:
+                max_length = len(str(cell.value))
+        except:
+            pass
+
+    ws.column_dimensions[column_letter].width = max_length + 3
+
+wb.save(output_file)
+
+print("Certification Report Generated Successfully!")
+print(report_df["Status"].value_counts())
+
+from google.colab import files
+files.download(output_file)
+     
+Certification Report Generated Successfully!
+Status
+Certified        713
+Not Certified    267
+Name: count, dtype: int64
